@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./global.css";
 import { Providers } from "./providers";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: {
@@ -18,6 +19,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="stylesheet" href="/app.css" />
+      </head>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
