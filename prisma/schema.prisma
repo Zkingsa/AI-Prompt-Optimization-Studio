@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  password  String
+  prompts   Prompt[]
+  apiKeys   ApiKey[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Prompt {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  content     String
+  model       String          @default("gpt-4o")
+  userId      String?
+  user        User?           @relation(fields: [userId], references: [id])
+  versions    PromptVersion[]
+  testSuites  TestSuite[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model PromptVersion {
+  id        String   @id @default(cuid())
+  promptId  String
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  content   String
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model TestSuite {
+  id        String     @id @default(cuid())
+  name      String
+  promptId  String
+  prompt    Prompt     @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  testCases TestCase[]
+  testRuns  TestRun[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model TestCase {
+  id          String    @id @default(cuid())
+  testSuiteId String
+  testSuite   TestSuite @relation(fields: [testSuiteId], references: [id], onDelete: Cascade)
+  input       Json
+  expected    String?
+  createdAt   DateTime  @default(now())
+}
+
+model TestRun {
+  id          String    @id @default(cuid())
+  testSuiteId String
+  testSuite   TestSuite @relation(fields: [testSuiteId], references: [id], onDelete: Cascade)
+  results     Json
+  createdAt   DateTime  @default(now())
+}
+
+model ApiKey {
+  id            String   @id @default(cuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  provider      String
+  label         String
+  encryptedKey  String
+  createdAt     DateTime @default(now())
+}
