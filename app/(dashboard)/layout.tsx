@@ -14,6 +14,8 @@ import {
   Sparkles,
   Moon,
   Sun,
+  Menu,
+  X,
 } from "lucide-react";
 import { navigation } from "@/config/navigation";
 import { useTheme } from "@/app/providers";
@@ -36,15 +38,33 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(64);
+  const [sidebarWidth, setSidebarWidth] = useState(88);
   const [isResizing, setIsResizing] = useState(false);
-  const expanded = isHovered;
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const expanded = !isMobile && isHovered;
+  const showText = expanded || isMobile;
 
   useEffect(() => {
-    if (!isResizing) return;
+    const updateViewport = () => {
+      const nextMobile = window.innerWidth < 768;
+      setIsMobile(nextMobile);
+      if (!nextMobile) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing || isMobile) return;
 
     const handleMouseMove = (event: MouseEvent) => {
-      const nextWidth = Math.min(200, Math.max(64, event.clientX));
+      const nextWidth = Math.min(240, Math.max(64, event.clientX - 8));
       setSidebarWidth(nextWidth);
     };
 
@@ -60,33 +80,61 @@ export default function DashboardLayout({
   }, [isResizing]);
 
   useEffect(() => {
-    if (isResizing) return;
+    if (isResizing || isMobile) return;
 
     const timer = window.setTimeout(() => {
       if (!isHovered) {
-        setSidebarWidth(64);
+        setSidebarWidth(88);
       }
     }, 180);
 
     return () => window.clearTimeout(timer);
-  }, [isHovered, isResizing]);
+  }, [isHovered, isResizing, isMobile]);
+
+  const asideWidth = isMobile ? (isMobileMenuOpen ? 280 : 0) : expanded ? Math.max(sidebarWidth, 88) : 64;
+  const contentOffset = isMobile ? 0 : asideWidth;
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
+      {isMobile && (
+        <div
+          className={`fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 md:hidden ${isMobileMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       <aside
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        style={{ width: `${expanded ? Math.max(sidebarWidth, 160) : 64}px`, minWidth: `${expanded ? Math.max(sidebarWidth, 160) : 64}px` }}
-        className="relative flex h-screen shrink-0 flex-col justify-between overflow-hidden border-r border-[var(--border)] bg-[var(--sidebar)] text-[var(--sidebar-foreground)] shadow-sm shadow-black/5 transition-[width] duration-300 ease-out"
+        onMouseEnter={() => !isMobile && setIsHovered(true)}
+        onMouseLeave={() => !isMobile && setIsHovered(false)}
+        style={{ width: `${asideWidth}px`, minWidth: `${asideWidth}px` }}
+        className={`fixed left-0 top-0 z-40 flex h-screen shrink-0 flex-col justify-between overflow-y-auto border-r border-[var(--border)] bg-[var(--sidebar)] text-[var(--sidebar-foreground)] shadow-sm shadow-black/5 transition-all duration-300 ease-out ${isMobile ? (isMobileMenuOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"}`}
       >
+        {isMobile && (
+          <div className="flex justify-end px-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="flex flex-col">
-          <div className="flex items-center justify-center px-3 py-4">
-            <Link href="/" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)]">
-              <Sparkles className="h-4 w-4" />
+          <div className="flex items-center justify-start px-2 py-4">
+            <Link href="/" className="flex items-center gap-2 rounded-xl px-2 py-2 text-[var(--accent)] transition-colors hover:bg-[var(--sidebar-hover)]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)]/15">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <span className={`flex min-w-0 flex-col truncate text-[clamp(0.75rem,1.2vw,1rem)] font-semibold leading-tight transition-[max-width,opacity,transform] duration-300 ease-out ${showText ? "max-w-[180px] translate-x-0 opacity-100" : "max-w-0 -translate-x-2 opacity-0"}`}>
+                <span className="truncate text-[var(--foreground)]">Prompt Optimization</span>
+                <span className="truncate text-black dark:text-white">Studio</span>
+              </span>
             </Link>
           </div>
 
-          <nav className="mt-2 flex flex-col items-center gap-1 px-3">
+          <nav className="mt-2 flex flex-col gap-1 px-3">
             {navigation.map((item) => {
               const Icon = ICONS[item.icon];
               const active =
@@ -96,9 +144,10 @@ export default function DashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
+                  onClick={() => isMobile && setIsMobileMenuOpen(false)}
+                  className={`flex w-full items-center rounded-xl px-3 py-2.5 text-sm transition-all duration-300 ease-out ${isMobile || expanded ? "justify-start" : "justify-center"} ${
                     active
-                      ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-foreground)] shadow-sm"
+                      ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-foreground)]"
                       : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-foreground)]"
                   }`}
                 >
@@ -112,8 +161,8 @@ export default function DashboardLayout({
                     <Icon className="h-4 w-4" />
                   </span>
                   <span
-                    className={`truncate transition-all duration-200 ${
-                      expanded ? "max-w-[180px] translate-x-0 opacity-100" : "max-w-0 -translate-x-2 opacity-0"
+                    className={`ml-2 truncate transition-[max-width,opacity,transform] duration-300 ease-out ${
+                      showText ? "max-w-[180px] translate-x-0 opacity-100" : "max-w-0 -translate-x-2 opacity-0"
                     }`}
                   >
                     {item.label}
@@ -124,19 +173,22 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        <div
-          role="separator"
-          aria-label="Resize sidebar"
-          onMouseDown={() => setIsResizing(true)}
-          className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
-        />
+        {!isMobile && (
+          <div
+            role="separator"
+            aria-label="Resize sidebar"
+            onMouseDown={() => setIsResizing(true)}
+            className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
+          />
+        )}
 
-        <div className="border-t border-white/10 px-3 py-3">
+        <div className="border-t border-white/10 px-2 py-3">
           <Link
             href="/settings"
-            className={`flex w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
+            onClick={() => isMobile && setIsMobileMenuOpen(false)}
+            className={`flex w-full items-center justify-start rounded-xl px-2 py-2.5 text-sm transition-all duration-300 ease-out ${
               pathname === "/settings" || pathname.startsWith("/settings/")
-                ? "bg-[var(--sidebar-hover)] text-[var(--sidebar-foreground)]"
+                ? "text-[var(--sidebar-foreground)]"
                 : "text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-foreground)]"
             }`}
           >
@@ -147,13 +199,32 @@ export default function DashboardLayout({
             }`}>
               <Settings className="h-4 w-4" />
             </span>
+            <span
+              className={`ml-2 truncate text-[clamp(0.7rem,1.2vw,0.95rem)] transition-[max-width,opacity,transform] duration-300 ease-out sm:text-sm ${
+                showText ? "max-w-[180px] translate-x-0 opacity-100" : "max-w-0 -translate-x-2 opacity-0"
+              }`}
+            >
+              Settings
+            </span>
           </Link>
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-6">
-          <span className="text-sm text-[var(--muted)]">Workspace</span>
+      <div className="flex min-w-0 flex-1 flex-col" style={{ paddingLeft: `${contentOffset}px` }}>
+        <header className="flex h-14 items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen((value) => !value)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
+                aria-label="Toggle navigation"
+              >
+                {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
+            )}
+            <span className="text-sm text-[var(--muted)]">Workspace</span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
