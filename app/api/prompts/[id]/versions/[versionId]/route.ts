@@ -1,6 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
+export async function generateStaticParams() {
+  try {
+    const versions = await prisma.promptVersion.findMany({
+      select: { id: true, promptId: true },
+    });
+    
+    return versions.map((version) => ({
+      id: version.promptId,
+      versionId: version.id,
+    }));
+  } catch (error) {
+    console.error("Error generating static params for prompt versions:", error);
+    return [];
+  }
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: { id: string; versionId: string } }
