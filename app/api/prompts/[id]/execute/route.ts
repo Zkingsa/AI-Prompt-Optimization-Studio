@@ -8,6 +8,21 @@ const executeSchema = z.object({
   variables: z.record(z.string()).optional(),
 });
 
+export async function generateStaticParams() {
+  try {
+    const prompts = await prisma.prompt.findMany({
+      select: { id: true },
+    });
+    
+    return prompts.map((prompt) => ({
+      id: prompt.id,
+    }));
+  } catch (error) {
+    console.error("Error generating static params for prompts:", error);
+    return [];
+  }
+}
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
