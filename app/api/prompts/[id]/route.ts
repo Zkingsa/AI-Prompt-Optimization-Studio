@@ -9,6 +9,21 @@ const updateSchema = z.object({
   description: z.string().optional(),
 });
 
+export async function generateStaticParams() {
+  try {
+    const prompts = await prisma.prompt.findMany({
+      select: { id: true },
+    });
+    
+    return prompts.map((prompt) => ({
+      id: prompt.id,
+    }));
+  } catch (error) {
+    console.error("Error generating static params for prompts:", error);
+    return [];
+  }
+}
+
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
     const prompt = await prisma.prompt.findUnique({ where: { id: params.id } });
