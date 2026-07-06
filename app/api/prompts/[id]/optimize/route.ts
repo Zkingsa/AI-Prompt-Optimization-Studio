@@ -3,6 +3,21 @@ import { prisma } from "@/lib/db/prisma";
 import { analyzePrompt } from "@/lib/optimization/analyzer";
 import { generateSuggestions } from "@/lib/optimization/optimizer";
 
+export async function generateStaticParams() {
+  try {
+    const prompts = await prisma.prompt.findMany({
+      select: { id: true },
+    });
+    
+    return prompts.map((prompt) => ({
+      id: prompt.id,
+    }));
+  } catch (error) {
+    console.error("Error generating static params for prompts:", error);
+    return [];
+  }
+}
+
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   try {
     const prompt = await prisma.prompt.findUnique({ where: { id: params.id } });
